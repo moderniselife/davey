@@ -47,7 +47,7 @@ During the voice session, every time someone joins or leaves, you'll need to tra
 
 [In my PR](https://github.com/projectdysnomia/dysnomia/pull/196), I've stored the pending transition in `#davePendingTransition`, noted if the last transition was a downgrade with `#daveDowngraded` and executed them with `#executePendingTransition` which consists of this:
 ```ts
-#executePendingTransition(transitionId) {
+#executePendingTransition(transitionId: number) {
 	// If we didn't expect a transition, warn about it.
 	if(!this.#davePendingTransition) {
 		return this.emit("warn", `Received execute transition, but we don't have a pending transition (${transitionId})`);
