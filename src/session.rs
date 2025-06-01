@@ -927,7 +927,9 @@ impl DaveSession {
         )
       })
       .collect();
-    self.decryptors.retain(|&uid, _| current_members.contains(&uid));
+    self
+      .decryptors
+      .retain(|&uid, _| current_members.contains(&uid));
 
     // Update encryptor
     let user_id = self.user_id_as_u64()?;
