@@ -160,8 +160,11 @@ const transitionId = message.readUInt16BE(3);
 try {
 	this.daveSession.processCommit(message.subarray(5));
 	// We note our pending transition because `DAVE_EXECUTE_TRANSITION` will follow
-	this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
-	this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
+	// except on reinitializing transitions (transition ID 0)
+	if (transitionId !== 0) {
+		this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
+		this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
+	}
 	this.emit("debug", `MLS commit processed (transition id: ${transitionId})`);
 } catch(e) {
 	// In the event this *does* error, you'll need to tell the voice server something went wrong and recover
@@ -185,8 +188,10 @@ This is pretty much the previous event. except we are joining the group and need
 const transitionId = m.readUInt16BE(3);
 try {
 	this.daveSession.processWelcome(m.subarray(5));
-	this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
-	this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
+	if (transitionId !== 0) {
+		this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
+		this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
+	}
 	this.emit("debug", `MLS welcome processed (transition id: ${transitionId})`);
 } catch(e) {
 	this.emit("warn", `MLS welcome errored: ${e}`);
