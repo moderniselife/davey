@@ -203,11 +203,15 @@ impl CipherManager {
 
   fn cleanup_expired_ciphers(&mut self) -> napi::Result<()> {
     self.cryptor_generations.retain(|&generation, ec| {
-      let expired = ec.expiry.is_some_and(|e| e < self.clock.elapsed());
+      let expired = if let Some(expiry) = ec.expiry {
+        expiry < self.clock.elapsed()
+      } else {
+        false
+      };
       if expired {
         trace!("Removing expired cryptor, generation: {generation}");
       }
-      expired
+      !expired
     });
 
     while self.oldest_generation < self.newest_generation
