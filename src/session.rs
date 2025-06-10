@@ -576,7 +576,7 @@ impl DaveSession {
                 leaf_index.u32()
               );
             }
-            
+
             // Here we clone the proposal and make it a reference. (we allow this with the OpenMLS fork)
             // This forces the resulting commit to use references rather than full proposals on add.
             // The voice gateway does not accept full proposals.
