@@ -576,8 +576,15 @@ impl DaveSession {
                 leaf_index.u32()
               );
             }
+            
+            // Here we clone the proposal and make it a reference. (we allow this with the OpenMLS fork)
+            // This forces the resulting commit to use references rather than full proposals on add.
+            // The voice gateway does not accept full proposals.
+            let mut proposal = *proposal;
+            proposal.proposal_or_ref_type = ProposalOrRefType::Reference;
+
             group
-              .store_pending_proposal(self.provider.storage(), *proposal)
+              .store_pending_proposal(self.provider.storage(), proposal)
               .map_err(|err| napi_error!("Could not store proposal: {err}"))?;
           }
           _ => return Err(napi_error!("ProcessedMessage is not a ProposalMessage")),
