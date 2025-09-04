@@ -2,8 +2,13 @@
 
 A [Discord Audio & Video End-to-End Encryption (DAVE) Protocol](https://daveprotocol.com/) Rust implementation using [OpenMLS](https://openmls.tech/).
 
+| Package | Version |
+|-|-|
+| Node/JS: `@snazzah/davey` on npm | [![NPM version](https://img.shields.io/npm/v/@snazzah/davey?maxAge=3600)](https://www.npmjs.com/package/@snazzah/davey) |
+| Rust: `davey` on crates.io | [![Crates version](https://img.shields.io/crates/v/davey?maxAge=3600)](https://crates.io/crates/davey) |
+
 ### Usage from Node/JavaScript
 The Node implementation is available under the `@snazzah/davey` package. Check the [README](/davey-node/README.md) for more info.
 
 ### Usage from Rust
-Right now there isn't any solid docs on using the Rust package, but it's available at `davey`.
+Right now there isn't any solid docs on using the Rust crate, but it's available at `davey`.
