@@ -38,6 +38,7 @@ keywords = [
 [dependency-groups]
 dev = [
     "pytest",
+    "pyright",
     "ruff",
 ]
 
@@ -48,4 +49,12 @@ features = ["pyo3/extension-module"]
 addopts = "-ra -q"
 testpaths = [
     "test",
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["*.pyi"]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__"
 ]
