@@ -84,3 +84,11 @@ target/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Audio
+*.mp3
+*.m4a
+*.wav
+*.png
+*.jpg
+*.flac

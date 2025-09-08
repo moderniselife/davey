@@ -16,7 +16,6 @@ pub use fingerprint::*;
 pub use session::*;
 pub use signing_key_pair::*;
 
-/// The Python module initialization.
 #[pymodule(name = "davey")]
 fn davey_python(m: &Bound<'_, PyModule>) -> PyResult<()> {
   let version = env!("CARGO_PKG_VERSION").replace("-pre.", "rc");
