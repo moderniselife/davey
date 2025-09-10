@@ -45,40 +45,34 @@ Very cool, now Discord knows you like DAVE, now time to handle it...
 ## Session Transitions
 During the voice session, every time someone joins or leaves, you'll need to transition the MLS group to another epoch. You won't have to deal with the exchanging secrets and epoch stuff, but you *do* have to handle transitions.
 
-[In my PR](https://github.com/projectdysnomia/dysnomia/pull/196), I've stored the pending transition in `#davePendingTransition`, noted if the last transition was a downgrade with `#daveDowngraded` and executed them with `#executePendingTransition` which consists of this:
+[In my PR](https://github.com/projectdysnomia/dysnomia/pull/196), I've stored pending transitions in `#davePendingTransitions`, noted if the last transition was a downgrade with `#daveDowngraded` and executed them with `#executePendingTransition` which consists of this:
 ```ts
 #executePendingTransition(transitionId: number) {
-	// If we didn't expect a transition, warn about it.
-	if(!this.#davePendingTransition) {
-		return this.emit("warn", `Received execute transition, but we don't have a pending transition (${transitionId})`);
-	}
+	// If we didn't expect the transition, warn about it.
+  if(!this.#davePendingTransitions.has(transitionId)) {
+    return this.emit("warn", `Received execute transition, but we don't have a pending transition for ${transitionId}`);
+  }
 
-	let transitioned = false;
-	if(transitionId !== this.#davePendingTransition.transition_id) {
-		// We didn't get the transition ID we were expecting...
-		this.emit("warn", `Received execute transition for an unexpected transition id (expected: ${this.#davePendingTransition.transition_id}, actual: ${transitionId})`);
-	} else {
-		const oldVersion = this.daveProtocolVersion;
-		this.daveProtocolVersion = this.#davePendingTransition.protocol_version;
+  const oldVersion = this.daveProtocolVersion;
+  this.daveProtocolVersion = this.#davePendingTransitions.get(transitionId);
 
-		// Handle upgrades & defer downgrades
-		if(oldVersion !== this.daveProtocolVersion && this.daveProtocolVersion === 0) {
-			// We've downgraded to transport-only encryption, sad.
-			this.#daveDowngraded = true;
-			this.emit("debug", "DAVE protocol downgraded");
-		} else if(transitionId > 0 && this.#daveDowngraded) {
-			// We've upgraded from transport-only encryption, cool.
-			this.#daveDowngraded = false;
-			this.daveSession?.setPassthroughMode(true, 10);
-			this.emit("debug", "DAVE protocol upgraded");
-		}
+  // Handle upgrades & defer downgrades
+  if(oldVersion !== this.daveProtocolVersion && this.daveProtocolVersion === 0) {
+    // We've downgraded to transport-only encryption, sad.
+    this.#daveDowngraded = true;
+    this.emit("debug", "DAVE protocol downgraded");
+  } else if(transitionId > 0 && this.#daveDowngraded) {
+    // We've upgraded from transport-only encryption, cool.
+    this.#daveDowngraded = false;
+    this.daveSession?.setPassthroughMode(true, 10);
+    this.emit("debug", "DAVE protocol upgraded");
+  }
 
-		// In the future we'd want to signal to the DAVESession to transition also, but it only supports v1 at this time
-		transitioned = true;
-		this.emit("debug", `DAVE transition executed (v${oldVersion} -> v${this.daveProtocolVersion}, id: ${transitionId})`);
-	}
-	this.#davePendingTransition = null;
-	return transitioned;
+  // In the future we'd want to signal to the DAVESession to transition also, but it only supports v1 at this time
+  this.emit("debug", `DAVE transition executed (v${oldVersion} -> v${this.daveProtocolVersion}, id: ${transitionId})`);
+
+  this.#davePendingTransitions.delete(transitionId);
+	return true;
 }
 ```
 
@@ -162,7 +156,7 @@ try {
 	// We note our pending transition because `DAVE_EXECUTE_TRANSITION` will follow
 	// except on reinitializing transitions (transition ID 0)
 	if (transitionId !== 0) {
-		this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
+    this.#davePendingTransitions.set(transitionId, this.daveProtocolVersion);
 		this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
 	}
 	this.emit("debug", `MLS commit processed (transition id: ${transitionId})`);
@@ -189,7 +183,7 @@ const transitionId = m.readUInt16BE(3);
 try {
 	this.daveSession.processWelcome(m.subarray(5));
 	if (transitionId !== 0) {
-		this.#davePendingTransition = {transition_id: transitionId, protocol_version: this.daveProtocolVersion};
+    this.#davePendingTransitions.set(transitionId, this.daveProtocolVersion);
 		this.sendWS(VoiceOPCodes.DAVE_TRANSITION_READY, {transition_id: transitionId});
 	}
 	this.emit("debug", `MLS welcome processed (transition id: ${transitionId})`);
@@ -203,7 +197,7 @@ try {
 Here we, well, prepare for a transition. I store the pending transition in the aforementioned `#davePendingTransition` but we also need to handle other cases too!
 ```ts
 this.emit("debug", `Preparing for DAVE transition (${packet.d.transition_id}, v${packet.d.protocol_version})`);
-this.#davePendingTransition = packet.d;
+this.#davePendingTransitions.set(packet.d.transition_id, packet.d.protocol_version);
 
 // When the included transition ID is 0, the transition is for (re)initialization and it can be executed immediately.
 if(packet.d.transition_id === 0) {
