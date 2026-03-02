@@ -1,6 +1,6 @@
 [package]
 name = "davey"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Rust implementation of Discord Audio & Video End-to-End Encryption (DAVE) Protocol"
 license = "MIT"
 homepage = "https://github.com/Snazzah/davey"
@@ -10,7 +10,7 @@ keywords = ["MLS", "Encryption", "E2EE", "Discord", "DAVE"]
 edition = "2024"
 
 [dependencies]
-openmls = { features = ["js"], version = "=0.7.1" }
+openmls = { features = ["js"], version = "=0.7.2" }
 openmls_basic_credential = "=0.4.1"
 openmls_rust_crypto = "=0.4.1"
 tracing = "0.1.41"

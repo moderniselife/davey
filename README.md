@@ -16,4 +16,4 @@ The Node implementation is available under the `@snazzah/davey` package. Check t
 Right now there isn't any solid docs on using the Rust crate, but it's available at `davey`.
 
 ### Usage from Python
-Python package is a WIP, but it's available at `davey`.
+Python package is available at `davey`. Check the [typings](/davey-python/davey.pyi) for usage.
