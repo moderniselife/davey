@@ -188,8 +188,29 @@ impl Encryptor {
 
       let size = leb128_size(truncated_nonce as u64);
 
+      // Bounds check: ensure the output buffer is large enough for the
+      // supplemental data section. process_frame_h264/h265 can expand the
+      // frame by converting 3-byte NALU start codes to 4-byte, making
+      // frame_size larger than the original input. If the buffer was
+      // allocated based on the original input size, the supplemental
+      // section may not fit.
+      let supplemental_section_start = frame_size + AES_GCM_127_TRUNCATED_TAG_BYTES;
+      let supplemental_section_size = size + ranges_size as usize + 1 + MARKER_BYTES.len();
+      if supplemental_section_start + supplemental_section_size > encrypted_frame.len() {
+        warn!(
+          "encryption failed, output buffer too small: need {} bytes, have {} \
+           (frame expanded from {} to {} bytes, likely due to NALU start code conversion)",
+          supplemental_section_start + supplemental_section_size,
+          encrypted_frame.len(),
+          frame.len(),
+          frame_size
+        );
+        success = false;
+        break;
+      }
+
       let (truncated_nonce_buffer, rest) =
-        encrypted_frame[frame_size + AES_GCM_127_TRUNCATED_TAG_BYTES..].split_at_mut(size);
+        encrypted_frame[supplemental_section_start..].split_at_mut(size);
       let (unencrypted_ranges_buffer, rest) = rest.split_at_mut(ranges_size as usize);
       let (supplemental_bytes_buffer, rest) = rest.split_at_mut(1);
       let (marker_bytes_buffer, _) = rest.split_at_mut(MARKER_BYTES.len());
@@ -250,8 +271,32 @@ impl Encryptor {
     success
   }
 
-  pub fn get_max_ciphertext_byte_size(_media_type: &MediaType, frame_size: usize) -> usize {
-    frame_size + SUPPLEMENTAL_BYTES + TRANSFORM_PADDING_BYTES
+  pub fn get_max_ciphertext_byte_size(
+    _media_type: &MediaType,
+    codec: Codec,
+    frame_size: usize,
+  ) -> usize {
+    // For H264 and H265, process_frame converts 3-byte NALU start codes (00 00 01)
+    // to 4-byte (00 00 00 01), expanding the reconstructed frame by 1 byte per NALU.
+    // Each NALU also creates an unencrypted range entry (offset + size as LEB128)
+    // in the supplemental data section.
+    //
+    // The minimum NALU is a 3-byte start code + 1-byte header = 4 bytes, so the
+    // maximum number of NALUs is frame_size / 4. Each NALU contributes:
+    //   - 1 byte of frame expansion (3-byte -> 4-byte start code)
+    //   - ~4 bytes of range metadata (2x LEB128 for offset + size)
+    // Total worst-case overhead per NALU: ~5 bytes
+    //
+    // For other codecs (Opus, VP8, VP9, AV1), no frame expansion occurs.
+    let codec_padding = match codec {
+      Codec::H264 | Codec::H265 => {
+        let max_nalus = frame_size / 4;
+        // 1 byte expansion + ~4 bytes range metadata per NALU
+        max_nalus * 5
+      }
+      _ => 0,
+    };
+    frame_size + SUPPLEMENTAL_BYTES + TRANSFORM_PADDING_BYTES + codec_padding
   }
 
   fn get_next_cryptor_and_nonce(&mut self) -> (Option<&AeadCipher>, u32) {
